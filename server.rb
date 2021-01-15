@@ -40,6 +40,7 @@ class MsgServer
       case command = data[0].to_i
       when 0 then check_id(data)
       when 1 then send_msg(data)
+      when 2 then recv_msg(data)
       end
     end
 
