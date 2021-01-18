@@ -1,8 +1,19 @@
 require 'socket'
 
-class MakeRecvData < Struct.new(:command, :length, :dest, :msgid, :message,
+class RecvData < Struct.new(:command, :length, :dest, :msgid, :message,
                                 :T_1, :T_2, :T_3, :T_4)
-
+  def dataset (data, time, n)
+    @recvdata[n].command = data[0]
+    length = data[1 ... 5]
+    @recvdata[n].length = length
+    @recvdata[n].dest = data[6]
+    @recvdata[n].msgid = data[7]
+    @recvdata[n].message = data[8 ... 8 + length]
+    @recvdata[n].T_1 = data[0]
+    @recvdata[n].T_2 = data[0]
+    @recvdata[n].T_3 = data[0]
+    @recvdata[n].T_4 = time
+  end 
 end
 
 def main
@@ -20,12 +31,12 @@ def main
     dest = num
     msgid = 2
 
-    @recvdata.push MakeRecvData.new(command,
-                                    length,
-                                    dest,
-                                    msgid,
-                                    message,
-                                    1,2,3,4)
+    @recvdata.push RecvData.new(command,
+                                length,
+                                dest,
+                                msgid,
+                                message,
+                                1,2,3,4)
   end
 
   length = 1
@@ -40,16 +51,16 @@ def main
   
   response = stub.check_id(iddata)
 =end
-   @n = 0
+  @n = 0
   
   loop do
     s.write(iddata)
     data = s.gets
-      data.T_4 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       
-      @recvdata[@n] = data
-      @n += 1
-    end
+    RecvData.dataset(data, time, @n)
+    @n += 1
+ 
     break if @n == count
   end
 
