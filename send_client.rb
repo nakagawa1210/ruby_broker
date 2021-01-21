@@ -4,8 +4,8 @@ class MakeSendArray
   def initialize(count, datasize)
     @senddata = []
     (0 ... count).each do |num|
-      #message = makepaket(datasize)
-      message = "message"
+      message = makepaket(datasize)
+
       length = message.length
       command = 1
       dest = num
@@ -26,20 +26,20 @@ class MakeSendArray
   def each
     return enum_for(:each) unless block_given?
     @senddata.each do |data|
-      senddata = data + Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
-      yield senddata
+      send = data + ',' + Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+      yield send
     end
   end
 
   def make_senddata(command,length,dest,message)
-    data = command.to_s + length.to_s + dest.to_s + message
+    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message
     return data 
   end
 end
 
 
 def main()
-  count = ARGV.size > 0 ?  ARGV[0].to_i : 100
+  count = ARGV.size > 0 ?  ARGV[0].to_i : 10
   datasize = ARGV.size > 1 ?  ARGV[1].to_i : 1
   window_size = ARGV.size > 2 ?  ARGV[2].to_i : 1
   port = 50052
@@ -55,8 +55,7 @@ def main()
   senddata = MakeSendArray.new(window_size,datasize)
 
   loop_count.times do
-    senddata.each{|data| s.write(data + "\n")}
-    print(s.gets)
+    senddata.each{|data| s.write(data + "\n");s.gets}
   end
   
   s.close

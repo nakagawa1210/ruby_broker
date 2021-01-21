@@ -1,6 +1,5 @@
 require "socket"
 
-=begin 
 class Recv
     def initialize()
       
@@ -11,23 +10,15 @@ class Recv
       loop do 
         recvdata = $array.shift
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+        data = recvdata << ',' << time.to_s
         
-        yield Msg::RecvData.new(length: recvdata.length,
-                                command: recvdata.command,
-                                dest: recvdata.dest,
-                                msgid: 1,
-                                message: recvdata.message,
-                                T_1: recvdata.T_1,
-                                T_2: recvdata.T_2,
-                                T_3: time,
-                                T_4: recvdata.T_4)
+        yield data
         break if $array.length == 0
       end
       $array_mu.unlock
     end
-  end
-=end
-  
+end
   
 class MsgServer
     def initialize()
@@ -36,11 +27,11 @@ class MsgServer
       @ID = []
     end
 
-    def analyze(data)
+    def analyze(data,s)
       case command = data[0].to_i
       when 0 then check_id(data)
-      when 1 then send_msg(data)
-      when 2 then recv_msg(data)
+      when 1 then send_msg(data,s)
+      when 2 then recv_msg(data,s)
       end
     end
 
@@ -56,8 +47,7 @@ class MsgServer
 =end
     end
     
-=begin 
-    def recv_msg(iddata, _call)
+    def recv_msg(iddata,s)
       $array_mu.lock
       begin
         while $array.length == 0
@@ -65,19 +55,34 @@ class MsgServer
           sleep(0.001)
           $array_mu.lock
         end
-        Recv.new().each
+        loop do
+          recvdata = $array.shift
+          time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          
+          data = recvdata << ',' << time.to_s
+        
+          s.write(data + "\n")
+          s.gets          
+          break if $array.length == 0
+        end
       ensure
-        #$array_mu.unlock
+        $array_mu.unlock
       end
     end 
-=end
    
-    def send_msg(data)
+    def send_msg(data,s)
       $array_mu.lock
       begin
-        data.gsub("\n", ',')
-        senddata = data + Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s + ','
+        buf = data.chomp
+        senddata = buf << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
         $array.push senddata
+        s.write("\n")
+        while s.gets
+          senddata = $_.chomp
+          senddata << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+          $array.push senddata
+          s.write("\n")
+        end
       ensure
         $array_mu.unlock
       end
@@ -95,15 +100,9 @@ def main ()
     stub = MsgServer.new()
 
     while true
-        Thread.start(gs.accept) do |s|       # save to dynamic variable
-            print(s, " is accepted\n")
-            while s.gets
-                res = stub.analyze($_)
-                s.write(res)
-            end
-            
-            print(s, " is gone\n")
-            print($array)
+        Thread.start(gs.accept) do |s|
+            s.gets
+            res = stub.analyze($_,s)         
             s.close
         end
     end
