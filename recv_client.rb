@@ -10,20 +10,30 @@ def main
   dest = 3
   msgid = 4
 
-  iddata = command.to_s << '/' << length.to_s << '/' << dest.to_s << '/' << msgid.to_s
+  iddata = command.to_s << '/' << length.to_s << '/' << dest.to_s << '/' << msgid.to_s << '\n'
 
   recvdata = []
 
-  s.write(iddata + "\n")
+  s.write(iddata)
   
-  while s.gets
+  loop do
+    s.gets
+    
+    if $_[0] == '8'
+      s.write(iddata)
+      s.gets
+    end
+    
     data = $_.chomp
     data << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
 
     recvdata.push data
-    
-    s.write("\n")
+
+    break if recvdata.length == count
   end
+  s.gets
+  s.write("9\n")
+  s.close
   
   puts "num,send,svr_in,svr_out,recv" 
   recvdata.each do |data|
