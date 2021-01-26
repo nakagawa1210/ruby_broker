@@ -1,25 +1,6 @@
 require "socket"
 
-class Recv
-    def initialize()
-      
-    end
-  
-    def each
-      return enum_for(:each) unless block_given?
-      loop do 
-        recvdata = $array.shift
-        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
-        data = recvdata << ',' << time.to_s
-        
-        yield data
-        break if $array.length == 0
-      end
-    end
-end
-  
-class MsgServer
+class MsgServer < TCPServer
   def initialize()
     $array = []
     $array_mu = Mutex.new()
@@ -34,10 +15,10 @@ class MsgServer
     winsize = buf[2].to_i
     
     case command
-    when 0 then check_id(data)
     when 1 then send_msg(winsize,s)
     when 2 then recv_msg(s)
     when 9 then true
+    else false
     end
   end
   
@@ -58,17 +39,16 @@ class MsgServer
     begin
       while $array.length == 0
         $array_mu.unlock
-        sleep(0.00001)
+        sleep(0.001)
         $array_mu.lock
       end
       loop do
         recvdata = $array.shift
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        #time = Time.now
+        data = recvdata << ',' << time.to_s << "\n"
         
-        data = recvdata << ',' << time.to_s
-        
-        s.write(data + "\n")
-       
+        s.write(data)
         break if $array.length == 0
       end
     ensure
@@ -85,9 +65,11 @@ class MsgServer
       s.write("\n")
       winsize.times do
         s.gets
-        break if $_[0] == '8'
+
         senddata = $_.chomp
-        senddata << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        #time = Time.now
+        senddata << ',' << time.to_s
         $array.push senddata
       end
     ensure
@@ -103,7 +85,7 @@ def main ()
   gs = TCPServer.open(50052)
   addr = gs.addr
   addr.shift
-    
+  
   stub = MsgServer.new()
 
   while true

@@ -55,13 +55,12 @@ def main()
 
   senddata = MakeSendArray.new(window_size,datasize)
 
-  send = "1/" + window_size.to_s + "\n"
-  
+  windata = "1/" + window_size.to_s + "\n"
+
   loop_count.times do
-    s.write(send)
+    s.write(windata)
     s.gets
-    senddata.each{|data| s.write(data)}
-    s.write("8\n")
+    senddata.each{|data| s.write(data + "\n")}
     s.gets
   end
   s.write("9\n")

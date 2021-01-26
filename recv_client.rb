@@ -10,17 +10,17 @@ def main
   dest = 3
   msgid = 4
 
-  iddata = command.to_s << '/' << length.to_s << '/' << dest.to_s << '/' << msgid.to_s << '\n'
+  iddata = command.to_s << '/' << length.to_s << '/' << dest.to_s << '/' << msgid.to_s 
 
   recvdata = []
 
-  s.write(iddata)
+  s.write(iddata + "\n")
   
   loop do
     s.gets
     
     if $_[0] == '8'
-      s.write(iddata)
+      s.write(iddata + "\n")
       s.gets
     end
     
