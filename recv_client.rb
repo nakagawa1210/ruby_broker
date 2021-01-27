@@ -14,25 +14,27 @@ def main
 
   recvdata = []
 
-  s.write(iddata + "\n")
-  
+  iddata.ljust(8, "*")
+  s.write(iddata)
+
   loop do
-    s.gets
+    data = s.recv(5000)
+    next if data == ""
     
-    if $_[0] == '8'
-      s.write(iddata + "\n")
-      s.gets
+    if data[0] == '8'
+      s.write(iddata)
+      data = s.recv(5000)
     end
     
-    data = $_.chomp
-    data << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+    buf = data.partition("*")
+    data = buf[0] << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
 
     recvdata.push data
 
     break if recvdata.length == count
   end
-  s.gets
-  s.write("9\n")
+  buf = s.recv(1)
+  s.write("9")
   s.close
   
   puts "num,send,svr_in,svr_out,recv" 

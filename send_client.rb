@@ -19,7 +19,7 @@ class MakeSendArray
 
   def makepaket(size)
     count = size * 1024
-    data = "#{size}kBdata".ljust(count, "*")
+    data = "#{size}kBdata".ljust(count, "@")
     return data
   end
   
@@ -27,13 +27,13 @@ class MakeSendArray
     return enum_for(:each) unless block_given?
     @senddata.each do |data|
       send = data + ',' + Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
-      yield send
+      yield send.ljust(5000, "*")
     end
   end
 
   def make_senddata(command,length,dest,message)
-    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message << '\n'
-    return data 
+    data = length.to_s << '/' << command.to_s << '/' <<  dest.to_s << '/' << message
+    return data
   end
 end
 
@@ -55,12 +55,12 @@ def main()
 
   senddata = MakeSendArray.new(window_size,datasize)
 
-  windata = "1/" + window_size.to_s + "\n"
+  data = "1/" + window_size.to_s
+  windata = data.ljust(8, "*")
 
   loop_count.times do
     s.write(windata)
-    s.gets
-    senddata.each{|data| s.write(data + "\n")}
+    senddata.each{|data| s.write(data)}
     s.gets
   end
   s.write("9\n")

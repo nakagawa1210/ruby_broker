@@ -8,14 +8,10 @@ class MsgServer < TCPServer
   end
 
   def analyze(data,s)
-    data = data.chomp
-    
-    buf = data.partition("/")
-    command = buf[0].to_i
-    winsize = buf[2].to_i
+    command = data[0].to_i
     
     case command
-    when 1 then send_msg(winsize,s)
+    when 1 then send_msg(data,s)
     when 2 then recv_msg(s)
     when 9 then true
     else false
@@ -39,37 +35,40 @@ class MsgServer < TCPServer
     begin
       while $array.length == 0
         $array_mu.unlock
-        sleep(0.001)
+        sleep(0.1)
         $array_mu.lock
       end
       loop do
         recvdata = $array.shift
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         #time = Time.now
-        data = recvdata << ',' << time.to_s << "\n"
-        
-        s.write(data)
+        data = recvdata << ',' << time.to_s
+        senddata = data.ljust(5000, "*")
+        s.write(senddata)
         break if $array.length == 0
       end
     ensure
       $array_mu.unlock
-      s.write("8\n")
+      s.write("8")
     end
     
     return false
   end 
   
-  def send_msg(winsize,s)
+  def send_msg(data,s)
     $array_mu.lock
     begin
-      s.write("\n")
-      winsize.times do
-        s.gets
+      buf = data.partition("/")
+      buf = buf[2].partition("*")
+      winsize = buf[0].to_i
 
-        senddata = $_.chomp
+      winsize.times do |i|
+        senddata = s.recv(5000)
+        
+        buf = senddata.partition("*")
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        #time = Time.now
-        senddata << ',' << time.to_s
+        
+        senddata = buf[0] << ',' << time.to_s
         $array.push senddata
       end
     ensure
@@ -91,8 +90,8 @@ def main ()
   while true
     Thread.start(gs.accept) do |s|
       loop do
-        s.gets
-        res = stub.analyze($_,s)
+        r_data = s.recv(8)
+        res = stub.analyze(r_data,s)
         break if res
       end
       s.close
