@@ -4,7 +4,8 @@ def main
   count = ARGV.size > 0 ?  ARGV[0].to_i : 10
   port = 50052
   s = TCPSocket.open("localhost", port)
-
+  s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
+  
   length = 1
   command = 2
   dest = 3

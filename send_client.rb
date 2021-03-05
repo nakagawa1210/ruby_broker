@@ -26,17 +26,18 @@ class MakeSendArray
   def each
     return enum_for(:each) unless block_given?
     @senddata.each do |data|
-      send = data + ',' + Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      send = data + ',' + time.to_s + "\n"
+
       yield send
     end
   end
 
   def make_senddata(command,length,dest,message)
-    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message << '\n'
+    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message
     return data 
   end
 end
-
 
 def main()
   count = ARGV.size > 0 ?  ARGV[0].to_i : 10
@@ -50,17 +51,20 @@ def main()
 
   port = 50052
   s = TCPSocket.open("localhost", port)
+  s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
 
   loop_count = count / window_size
 
   senddata = MakeSendArray.new(window_size,datasize)
 
   windata = "1/" + window_size.to_s + "\n"
-
+  
+  #bin = [8,1,7,"hello",0,0,0,0].pack("i!3mq!4")
+  #p bin.length
   loop_count.times do
     s.write(windata)
     s.gets
-    senddata.each{|data| s.write(data + "\n")}
+    senddata.each{|data| s.write(data)}
     s.gets
   end
   s.write("9\n")

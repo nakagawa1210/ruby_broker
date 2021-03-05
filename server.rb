@@ -15,7 +15,9 @@ class MsgServer < TCPServer
     winsize = buf[2].to_i
     
     case command
-    when 1 then send_msg(winsize,s)
+    when 1 then
+      s.write("\n")
+      send_msg(winsize,s)
     when 2 then recv_msg(s)
     when 9 then true
     else false
@@ -62,7 +64,6 @@ class MsgServer < TCPServer
   def send_msg(winsize,s)
     $array_mu.lock
     begin
-      s.write("\n")
       winsize.times do
         s.gets
 
@@ -83,6 +84,7 @@ end
 
 def main ()
   gs = TCPServer.open(50052)
+  gs.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
   addr = gs.addr
   addr.shift
   
@@ -91,6 +93,7 @@ def main ()
   while true
     Thread.start(gs.accept) do |s|
       loop do
+        #p s.read(53).unpack("i!3mq!4")
         s.gets
         res = stub.analyze($_,s)
         break if res
@@ -101,3 +104,4 @@ def main ()
 end
 
 main
+
