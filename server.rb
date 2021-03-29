@@ -8,16 +8,17 @@ class MsgServer < TCPServer
   end
 
   def analyze(data,s)
-    data = data.chomp
+    #data = data.chomp
     
-    buf = data.partition("/")
-    command = buf[0].to_i
-    winsize = buf[2].to_i
+    #buf = data.partition("/")
+    #command = buf[0].to_i
+    #winsize = buf[2].to_i
+    command = data[0]
+    winsize = data[1]
+    datasize = data[2]
     
     case command
-    when 1 then
-      s.write("\n")
-      send_msg(winsize,s)
+    when 1 then send_msg(winsize,datasize,s)
     when 2 then recv_msg(s)
     when 9 then true
     else false
@@ -44,38 +45,43 @@ class MsgServer < TCPServer
         sleep(0.001)
         $array_mu.lock
       end
-      loop do
-        recvdata = $array.shift
+      p length = $array.length
+      p size = $array[0][1]
+      data = [length,size].pack("i!2")
+      s.write(data)
+      length.times do
+        p recvdata = $array.shift
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         #time = Time.now
-        data = recvdata << ',' << time.to_s << "\n"
-        
-        s.write(data)
-        break if $array.length == 0
+        recvdata[6] = time
+
+        s.write(recvdata.pack("i!3uN4"))
+        p $array.length
+        #break if $array.length == 0
       end
     ensure
       $array_mu.unlock
-      s.write("8\n")
+      s.write("8")
     end
     
     return false
   end 
   
-  def send_msg(winsize,s)
+  def send_msg(winsize,datasize,s)
     $array_mu.lock
     begin
       winsize.times do
-        s.gets
-
-        senddata = $_.chomp
+        #s.gets
+        #senddata = $_.chomp
+        data = s.readpartial(datasize*1414 + 44).unpack("i!3uN4")
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         #time = Time.now
-        senddata << ',' << time.to_s
-        $array.push senddata
+        data[5] = time
+        $array.push data
       end
     ensure
       $array_mu.unlock
-      s.write("\n")
+      s.write("0")
     end
     return false
   end
@@ -93,9 +99,8 @@ def main ()
   while true
     Thread.start(gs.accept) do |s|
       loop do
-        #p s.read(53).unpack("i!3mq!4")
-        s.gets
-        res = stub.analyze($_,s)
+        windata = s.readpartial(12).unpack("i!3")
+        res = stub.analyze(windata,s)
         break if res
       end
       s.close

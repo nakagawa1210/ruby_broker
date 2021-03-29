@@ -27,14 +27,13 @@ class MakeSendArray
     return enum_for(:each) unless block_given?
     @senddata.each do |data|
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      send = data + ',' + time.to_s + "\n"
-
-      yield send
+      data[4] = time
+      yield data.pack("i!3uN4")
     end
   end
 
   def make_senddata(command,length,dest,message)
-    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message
+    data = [command,length,dest,message,0,0,0,0]
     return data 
   end
 end
@@ -45,7 +44,7 @@ def main()
   window_size = ARGV.size > 2 ?  ARGV[2].to_i : 1
 
   if (count < window_size)
-    puts"count < window_size"
+    puts "count < window_size"
     exit
   end
 
@@ -57,17 +56,16 @@ def main()
 
   senddata = MakeSendArray.new(window_size,datasize)
 
-  windata = "1/" + window_size.to_s + "\n"
+  windata = [1,window_size,datasize].pack("i!3")
   
-  #bin = [8,1,7,"hello",0,0,0,0].pack("i!3mq!4")
-  #p bin.length
+  endack = [9,0,0].pack("i!3")
+  
   loop_count.times do
     s.write(windata)
-    s.gets
     senddata.each{|data| s.write(data)}
-    s.gets
+    s.readpartial(2)
   end
-  s.write("9\n")
+  s.write(endack)
   s.close
 end
 
