@@ -24,13 +24,12 @@ def main
     p winsize
     p datasize
     winsize.times do
-      data = s.readpartial(datasize*1414 + 44).unpack("i!3uN4")
+      data = s.readpartial(datasize*1414 + 44).unpack("i!3uE4")
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       data[7] = time 
-    p count
       recvdata.push data
     end
-    s.readpartial(1)
+    s.readpartial(4)
     break if recvdata.length == count
   end
   s.write(endack)

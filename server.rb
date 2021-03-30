@@ -55,13 +55,14 @@ class MsgServer < TCPServer
         #time = Time.now
         recvdata[6] = time
 
-        s.write(recvdata.pack("i!3uN4"))
+        s.write(recvdata.pack("i!3uE4"))
         p $array.length
         #break if $array.length == 0
       end
     ensure
       $array_mu.unlock
-      s.write("8")
+      ack = 8
+      s.write(ack.pack("i"))
     end
     
     return false
@@ -73,7 +74,8 @@ class MsgServer < TCPServer
       winsize.times do
         #s.gets
         #senddata = $_.chomp
-        data = s.readpartial(datasize*1414 + 44).unpack("i!3uN4")
+        msg = s.readpartial(datasize*1414 + 44)
+        p data = msg.unpack("i!3uE4")
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         #time = Time.now
         data[5] = time
@@ -81,7 +83,8 @@ class MsgServer < TCPServer
       end
     ensure
       $array_mu.unlock
-      s.write("0")
+      ack = [0].pack("i")
+      s.write(ack)
     end
     return false
   end

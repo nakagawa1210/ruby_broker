@@ -28,7 +28,7 @@ class MakeSendArray
     @senddata.each do |data|
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       data[4] = time
-      yield data.pack("i!3uN4")
+      yield data.pack("i!3uE4")
     end
   end
 
@@ -63,7 +63,7 @@ def main()
   loop_count.times do
     s.write(windata)
     senddata.each{|data| s.write(data)}
-    s.readpartial(2)
+    s.readpartial(4)
   end
   s.write(endack)
   s.close
