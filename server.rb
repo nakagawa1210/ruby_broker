@@ -24,6 +24,10 @@ class MsgServer < TCPServer
     end
   end
   
+  def make_responsedata(command,length,dest,msgid,rescode)
+    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << msgid.to_s << '/' << rescode.to_s << "\n"
+    return data 
+  end
   
   def check_id(iddata, _unused_call)
     @ID.push iddata
@@ -37,46 +41,43 @@ class MsgServer < TCPServer
   end
   
   def recv_msg(s)
-    $array_mu.lock
-    begin
-      while $array.length == 0
-        $array_mu.unlock
-        sleep(0.001)
-        $array_mu.lock
-      end
-      loop do
+    loop do
+      $array_mu.lock
+      begin
+        while $array.length == 0
+          $array_mu.unlock
+          sleep(0.001)
+          $array_mu.lock
+        end
         recvdata = $array.shift
-        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        #time = Time.now
-        data = recvdata << ',' << time.to_s << "\n"
-        
-        s.write(data)
-        break if $array.length == 0
+      ensure
+        $array_mu.unlock
       end
-    ensure
-      $array_mu.unlock
-      s.write("8\n")
+
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      data = recvdata << ',' << time.to_s << "\n"
+        
+      s.write(data)
+      break if $array.length == 0
     end
-    
+    s.write("8\n")
     return false
   end 
   
   def send_msg(winsize,s)
-    $array_mu.lock
-    begin
-      winsize.times do
-        s.gets
-
-        senddata = $_.chomp
-        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        #time = Time.now
-        senddata << ',' << time.to_s
+    winsize.times do
+      s.gets
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      senddata = $_.chomp
+      senddata << ',' << time.to_s
+        $array_mu.lock
+      begin 
         $array.push senddata
+      ensure
+        $array_mu.unlock
       end
-    ensure
-      $array_mu.unlock
-      s.write("\n")
     end
+    s.write(make_responsedata(1,2,3,4,5))
     return false
   end
 end 
@@ -93,7 +94,6 @@ def main ()
   while true
     Thread.start(gs.accept) do |s|
       loop do
-        #p s.read(53).unpack("i!3mq!4")
         s.gets
         res = stub.analyze($_,s)
         break if res

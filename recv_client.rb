@@ -24,9 +24,9 @@ def main
       s.write(iddata + "\n")
       s.gets
     end
-    
+    time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     data = $_.chomp
-    data << ',' << Process.clock_gettime(Process::CLOCK_MONOTONIC).to_s
+    data << ',' << time.to_s
 
     recvdata.push data
 

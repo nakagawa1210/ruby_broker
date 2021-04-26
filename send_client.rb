@@ -28,7 +28,6 @@ class MakeSendArray
     @senddata.each do |data|
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       send = data + ',' + time.to_s + "\n"
-
       yield send
     end
   end
@@ -59,8 +58,6 @@ def main()
 
   windata = "1/" + window_size.to_s + "\n"
   
-  #bin = [8,1,7,"hello",0,0,0,0].pack("i!3mq!4")
-  #p bin.length
   loop_count.times do
     s.write(windata)
     s.gets
