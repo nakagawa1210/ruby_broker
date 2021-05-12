@@ -3,7 +3,6 @@ require "socket"
 class MsgServer < TCPServer
   def initialize()
     $array = []
-    $array_mu = Mutex.new()
     @ID = []
   end
 
@@ -42,18 +41,12 @@ class MsgServer < TCPServer
   
   def recv_msg(s)
     loop do
-      $array_mu.lock
-      begin
-        while $array.length == 0
-          $array_mu.unlock
-          sleep(0.001)
-          $array_mu.lock
-        end
-        recvdata = $array.shift
-      ensure
-        $array_mu.unlock
+      while $array.length == 0
+        sleep(0.001)
       end
-
+      
+      recvdata = $array.shift
+      
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       data = recvdata << ',' << time.to_s << "\n"
         
@@ -70,12 +63,8 @@ class MsgServer < TCPServer
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       senddata = $_.chomp
       senddata << ',' << time.to_s
-        $array_mu.lock
-      begin 
-        $array.push senddata
-      ensure
-        $array_mu.unlock
-      end
+
+      $array.push senddata
     end
     s.write(make_responsedata(1,2,3,4,5))
     return false
