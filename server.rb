@@ -4,6 +4,11 @@ class MsgServer < TCPServer
   def initialize()
     $array = []
     @ID = []
+    $array_mu = Mutex.new()
+    $recv_lock = 0
+    $send_lock = 0
+    $recv_lock_time = []
+    $send_lock_time = []
   end
 
   def analyze(data,s)
@@ -19,6 +24,7 @@ class MsgServer < TCPServer
       send_msg(winsize,s)
     when 2 then recv_msg(s)
     when 9 then true
+    when 5 then 5
     else false
     end
   end
@@ -28,15 +34,12 @@ class MsgServer < TCPServer
     return data 
   end
   
-  def check_id(iddata, _unused_call)
-    @ID.push iddata
-=begin   
-     Msg::Response.new(length: 1,
-                       command: 2,
-                       dest: 3,
-                       msgid: 4,
-                       rescode: 5) 
-=end
+  def check_id()
+    puts "send_lock = #{$send_lock},recv_lock = #{$recv_lock}"
+    $send_lock.times do |n|
+      puts "#{$send_lock_time[n]},#{$recv_lock_time[n]}"
+    end
+    return true
   end
   
   def recv_msg(s)
@@ -45,7 +48,16 @@ class MsgServer < TCPServer
         sleep(0.001)
       end
       
-      recvdata = $array.shift
+      lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $array_mu.lock
+      $recv_lock += 1
+      begin      
+        recvdata = $array.shift
+      ensure
+        $array_mu.unlock
+      end
+      lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $recv_lock_time.push [lock_start, lock_end]
       
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       data = recvdata << ',' << time.to_s << "\n"
@@ -63,8 +75,16 @@ class MsgServer < TCPServer
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       senddata = $_.chomp
       senddata << ',' << time.to_s
-
-      $array.push senddata
+      lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $array_mu.lock
+      $send_lock += 1
+      begin
+        $array.push senddata
+      ensure
+        $array_mu.unlock
+      end
+      lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $send_lock_time.push [lock_start, lock_end] 
     end
     s.write(make_responsedata(1,2,3,4,5))
     return false
@@ -80,6 +100,8 @@ def main ()
   
   stub = MsgServer.new()
 
+  res = 0
+  
   while true
     Thread.start(gs.accept) do |s|
       loop do
@@ -88,6 +110,12 @@ def main ()
         break if res
       end
       s.close
+      if res == 5
+        puts "send_lock = #{$send_lock},recv_lock = #{$recv_lock}"
+        $send_lock.times do |n|
+          puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]}"
+        end
+      end
     end
   end
 end

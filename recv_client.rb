@@ -33,7 +33,7 @@ def main
     break if recvdata.length == count
   end
   s.gets
-  s.write("9\n")
+  s.write("5\n")
   s.close
   
   puts "num,send,svr_in,svr_out,recv" 
