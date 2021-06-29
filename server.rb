@@ -5,8 +5,6 @@ class MsgServer < TCPServer
     $array = []
     @ID = []
     $array_mu = Mutex.new()
-    $recv_lock = 0
-    $send_lock = 0
     $recv_lock_time = []
     $send_lock_time = []
   end
@@ -35,11 +33,11 @@ class MsgServer < TCPServer
   end
   
   def check_id()
-    puts "send_lock = #{$send_lock},recv_lock = #{$recv_lock}"
-    $send_lock.times do |n|
-      puts "#{$send_lock_time[n]},#{$recv_lock_time[n]}"
+    puts "send_lock_start,send_lock_end,recv_lock_start,recv_lock_end"
+    $recv_lock_time.length.times do |n|
+      puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]}"
+      return true
     end
-    return true
   end
   
   def recv_msg(s)
@@ -50,7 +48,6 @@ class MsgServer < TCPServer
       
       lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $array_mu.lock
-      $recv_lock += 1
       begin      
         recvdata = $array.shift
       ensure
@@ -77,7 +74,6 @@ class MsgServer < TCPServer
       senddata << ',' << time.to_s
       lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $array_mu.lock
-      $send_lock += 1
       begin
         $array.push senddata
       ensure
@@ -111,8 +107,8 @@ def main ()
       end
       s.close
       if res == 5
-        puts "send_lock = #{$send_lock},recv_lock = #{$recv_lock}"
-        $send_lock.times do |n|
+        puts "send_lock_start,send_lock_end,recv_lock_start,recv_lock_end"
+        $recv_lock_time.length.times do |n|
           puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]}"
         end
       end

@@ -15,7 +15,7 @@ ruby server.rb > log/$3$1_$2_$TIME.lenlog&
 SRVID=$!
 sleep 1
 ruby recv_client.rb $1 > log/$3$1_$2_$TIME.log &
-sleep 3
+sleep 1
 RECVID=$!
 ruby send_client.rb $1 $2 $4 &
 
