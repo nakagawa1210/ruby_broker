@@ -3,9 +3,17 @@ while read filename
 do
     echo $filename
     
-    ruby cal_percent.rb $filename >> log/per_file.log
+    ruby cal_locktime.rb $filename
 
 done < log/latest_file.log
+
+while read filename
+do
+    echo $filename
+    
+    ruby cal_percent.rb $filename >> log/per_file.log
+
+done < log/latest_file.latelog
 
 while read filename
 do
@@ -16,3 +24,6 @@ do
 done < log/per_file.log
 
 ruby fc_for_per.rb log/per_sum_file.log
+
+:>| log/per_file.log
+:>| log/per_sum_file.log

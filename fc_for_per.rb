@@ -19,9 +19,11 @@ def main
                "\t" + data[3].to_f.round(5).to_s + 
                "\t" + data[4].to_f.round(5).to_s + 
                "\t" + data[5].to_f.round(5).to_s + 
-               "\t" + data[6].to_f.round(5).to_s]
+               "\t" + data[6].to_f.round(5).to_s +
+               "\t" + data[7].to_f.round(8).to_s + 
+               "\t" + data[8].to_f.round(8).to_s]
     end
   end
 end
                                                           
-main                                                      
+main

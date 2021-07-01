@@ -11,6 +11,9 @@ else
     MAX=$2
 fi
 
+echo delete latestlog
+./clean_latestlog.sh
+
 echo rsync
 rsync --delete --archive ~/ruby_broker/ nakagawa@hsc1.swlab.cs.okayama-u.ac.jp:ruby_broker/
 
