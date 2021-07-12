@@ -33,7 +33,7 @@ class MakeSendArray
   end
 
   def make_senddata(command,length,dest,message)
-    data = [command,length,dest,message,0,0,0,0]
+    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << message
     return data 
   end
 end
@@ -44,7 +44,7 @@ def main()
   window_size = ARGV.size > 2 ?  ARGV[2].to_i : 1
 
   if (count < window_size)
-    puts "count < window_size"
+    puts"count < window_size"
     exit
   end
 
@@ -56,17 +56,17 @@ def main()
 
   senddata = MakeSendArray.new(window_size,datasize)
 
-  windata = [1,window_size,datasize].pack("i!3")
-  
-  endack = [9,0,0].pack("i!3")
+  windata = "1/" + window_size.to_s + "\n"
   
   loop_count.times do
     s.write(windata)
+    s.gets
     senddata.each{|data| s.write(data)}
-    s.readpartial(4)
+    s.gets
   end
-  s.write(endack)
+  s.write("9\n")
   s.close
 end
 
 main
+
