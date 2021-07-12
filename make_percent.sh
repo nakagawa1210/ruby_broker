@@ -3,9 +3,9 @@ while read filename
 do
     echo $filename
     
-    ruby cal_locktime.rb $filename
+    ruby cal_diff.rb $filename
 
-done < log/latest_file.log
+done < log/latest_file.latelog
 
 while read filename
 do

@@ -1,35 +1,34 @@
 require "csv"
+
 def per (val, all_val)
    return val.to_f * 100 / all_val.to_f
 end
 
 def main
-  @data_sum = [0.0,0.0,0.0,0.0,0.0,0.0]
+  @data_sum = Array.new(15, 0.0)
 
   file_log = ARGV.size > 0 ?  ARGV[0] : exit #read TIME.log file
-  file_csv = 'log/' + file_log + '.csv'
+  file_diff = 'log/' + file_log + '.diff'
+
+  data_list = CSV.read(file_diff)
+  sp_file = file_log.split(".")
+  filename = 'log/' + sp_file[0] + '.perlog'
   
-  data =[]                                                
-  data_list = CSV.read(file_csv)
-  sp_file = file_csv.split(".")
-  filename = sp_file[0] + '+%' + '.' + sp_file[2]
-  CSV.open(filename,'w') do |test|
-    data_list.shift
+  CSV.open(filename,'w') do |file|
     data_list.each do |data|
-      #test << [data[0],data[1],data[2],data[3],data[4],
-      #         per(data[1],data[4]), per(data[2],data[4]),
-      #         per(data[3],data[4]), per(data[5],data[4]),
-      #         per(data[6],data[4])]
-      6.times do |i|
-        @data_sum[i] += data[i+1].to_f
+      15.times do |i|
+        @data_sum[i] += data[i].to_f
       end
     end
-    test << [@data_sum[0],@data_sum[1],@data_sum[2],@data_sum[3],
-             per(@data_sum[0],@data_sum[3]),per(@data_sum[1],@data_sum[3]),
-             per(@data_sum[2],@data_sum[3]),
-             per(@data_sum[4],@data_sum[3]),per(@data_sum[5],@data_sum[3])]
+    file<<[per(@data_sum[0],@data_sum[3]),per(@data_sum[1],@data_sum[3]),
+           per(@data_sum[2],@data_sum[3]),
+           per(@data_sum[4],@data_sum[8]),per(@data_sum[5],@data_sum[8]),
+           per(@data_sum[6],@data_sum[8]),per(@data_sum[7],@data_sum[8]),
+           per(@data_sum[9],@data_sum[14]),per(@data_sum[10],@data_sum[14]),
+           per(@data_sum[11],@data_sum[14]),per(@data_sum[12],@data_sum[14]),
+           per(@data_sum[13],@data_sum[14])]
   end
-    puts filename
+  puts filename
 end                                                       
                                                           
 main

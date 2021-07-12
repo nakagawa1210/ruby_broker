@@ -44,20 +44,23 @@ class MsgServer < TCPServer
   
   def recv_msg(s)
     loop do
+      spin_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      
       while $array.length == 0
-        sleep(0.001)
+        sleep(0.0001)
       end
       
       lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $recv_lock += 1 if $array_mu.locked?
-      #$array_mu.lock
+      $array_mu.lock
       lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      #begin      
+      begin      
         recvdata = $array.shift
-      #ensure
-      #  $array_mu.unlock
-      #end
-      $recv_lock_time.push [lock_start, lock_end]
+        shift_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      ensure
+        $array_mu.unlock
+      end
+      $recv_lock_time.push [spin_start, lock_start, lock_end, shift_end]
       
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       data = recvdata << ',' << time.to_s << "\n"
@@ -77,15 +80,16 @@ class MsgServer < TCPServer
       senddata << ',' << time.to_s
       lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $send_lock += 1 if $array_mu.locked?
-      #$array_mu.lock
+      $array_mu.lock
       lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      #begin
+      begin
         $array.push senddata
-      #ensure
-      #  $array_mu.unlock
-      #end
+        push_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      ensure
+        $array_mu.unlock
+      end
       
-      $send_lock_time.push [lock_start, lock_end] 
+      $send_lock_time.push [lock_start, lock_end, push_end] 
     end
     s.write(make_responsedata(1,2,3,4,5))
     return false
@@ -112,9 +116,9 @@ def main ()
       end
       s.close
       if res == 5
-        puts "s_lock_start,s_lock_end,r_lock_start,r_lock_end send_lock = #{$send_lock} recv_lock = #{$recv_lock}"
+        puts "s_lock_start,s_lock_end,shift_end,spin_start,r_lock_start,r_lock_end,push_end,send_lock = #{$send_lock} recv_lock = #{$recv_lock}"
         $recv_lock_time.length.times do |n|
-          puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]}"
+          puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$send_lock_time[n][2]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]},#{$recv_lock_time[n][2]},#{$recv_lock_time[n][3]}"
         end
       end
     end
