@@ -12,17 +12,16 @@ class MsgServer < TCPServer
   end
 
   def analyze(data,s)
-    #data = data.chomp
+    data = data.chomp
     
-    #buf = data.partition("/")
-    #command = buf[0].to_i
-    #winsize = buf[2].to_i
-    command = data[0]
-    winsize = data[1]
-    datasize = data[2]
+    buf = data.partition("/")
+    command = buf[0].to_i
+    winsize = buf[2].to_i
     
     case command
-    when 1 then send_msg(winsize,datasize,s)
+    when 1 then
+      s.write("\n")
+      send_msg(winsize,s)
     when 2 then recv_msg(s)
     when 9 then true
     when 5 then 5
@@ -50,6 +49,7 @@ class MsgServer < TCPServer
       while $array.length == 0
         sleep(0.0001)
       end
+      
       lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       $recv_lock += 1 if $array_mu.locked?
       $array_mu.lock
