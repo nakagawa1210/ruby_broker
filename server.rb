@@ -3,8 +3,12 @@ require "socket"
 class MsgServer < TCPServer
   def initialize()
     $array = []
-    $array_mu = Mutex.new()
     @ID = []
+    $array_mu = Mutex.new()
+    $recv_lock = 0
+    $send_lock = 0
+    $recv_lock_time = []
+    $send_lock_time = []
   end
 
   def analyze(data,s)
@@ -21,71 +25,73 @@ class MsgServer < TCPServer
     when 1 then send_msg(winsize,datasize,s)
     when 2 then recv_msg(s)
     when 9 then true
+    when 5 then 5
     else false
     end
   end
   
+  def make_responsedata(command,length,dest,msgid,rescode)
+    data = command.to_s << '/' << length.to_s << '/' <<  dest.to_s << '/' << msgid.to_s << '/' << rescode.to_s << "\n"
+    return data 
+  end
   
-  def check_id(iddata, _unused_call)
-    @ID.push iddata
-=begin   
-     Msg::Response.new(length: 1,
-                       command: 2,
-                       dest: 3,
-                       msgid: 4,
-                       rescode: 5) 
-=end
+  def check_id()
+    puts "send_lock_start,send_lock_end,recv_lock_start,recv_lock_end"
+    $recv_lock_time.length.times do |n|
+      puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]}"
+      return true
+    end
   end
   
   def recv_msg(s)
-    $array_mu.lock
-    begin
+    loop do
+      spin_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      
       while $array.length == 0
+        sleep(0.0001)
+      end
+      lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $recv_lock += 1 if $array_mu.locked?
+      $array_mu.lock
+      lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin      
+        recvdata = $array.shift
+        shift_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      ensure
         $array_mu.unlock
-        sleep(0.001)
-        $array_mu.lock
       end
-      p length = $array.length
-      p size = $array[0][1]
-      data = [length,size].pack("i!2")
+      $recv_lock_time.push [spin_start, lock_start, lock_end, shift_end]
+      
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      data = recvdata << ',' << time.to_s << "\n"
+        
       s.write(data)
-      length.times do
-        p recvdata = $array.shift
-        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        #time = Time.now
-        recvdata[6] = time
-
-        s.write(recvdata.pack("i!3uE4"))
-        p $array.length
-        #break if $array.length == 0
-      end
-    ensure
-      $array_mu.unlock
-      ack = 8
-      s.write(ack.pack("i"))
+      break if $array.length == 0
     end
-    
+    s.write("8\n")
     return false
   end 
   
-  def send_msg(winsize,datasize,s)
-    $array_mu.lock
-    begin
-      winsize.times do
-        #s.gets
-        #senddata = $_.chomp
-        msg = s.readpartial(datasize*1414 + 44)
-        p data = msg.unpack("i!3uE4")
-        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        #time = Time.now
-        data[5] = time
-        $array.push data
+  def send_msg(winsize,s)
+    winsize.times do
+      s.gets
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      senddata = $_.chomp
+      senddata << ',' << time.to_s
+      lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      $send_lock += 1 if $array_mu.locked?
+      $array_mu.lock
+      lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        $array.push senddata
+        push_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      ensure
+        $array_mu.unlock
       end
-    ensure
-      $array_mu.unlock
-      ack = [0].pack("i")
-      s.write(ack)
+      
+      $send_lock_time.push [lock_start, lock_end, push_end] 
     end
+    s.write(make_responsedata(1,2,3,4,5))
     return false
   end
 end 
@@ -99,14 +105,22 @@ def main ()
   
   stub = MsgServer.new()
 
+  res = 0
+  
   while true
     Thread.start(gs.accept) do |s|
       loop do
-        windata = s.readpartial(12).unpack("i!3")
-        res = stub.analyze(windata,s)
+        s.gets
+        res = stub.analyze($_,s)
         break if res
       end
       s.close
+      if res == 5
+        puts "s_lock_start,s_lock_end,shift_end,spin_start,r_lock_start,r_lock_end,push_end,send_lock = #{$send_lock} recv_lock = #{$recv_lock}"
+        $recv_lock_time.length.times do |n|
+          puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$send_lock_time[n][2]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]},#{$recv_lock_time[n][2]},#{$recv_lock_time[n][3]}"
+        end
+      end
     end
   end
 end

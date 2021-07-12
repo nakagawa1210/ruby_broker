@@ -29,10 +29,17 @@ def main
       data[7] = time 
       recvdata.push data
     end
-    s.readpartial(4)
+
+    time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    data = $_.chomp
+    data << ',' << time.to_s
+
+    recvdata.push data
+
     break if recvdata.length == count
   end
-  s.write(endack)
+  s.gets
+  s.write("5\n")
   s.close
   
   puts "num,send,svr_in,svr_out,recv" 

@@ -27,8 +27,8 @@ class MakeSendArray
     return enum_for(:each) unless block_given?
     @senddata.each do |data|
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      data[4] = time
-      yield data.pack("i!3uE4")
+      send = data + ',' + time.to_s + "\n"
+      yield send
     end
   end
 
